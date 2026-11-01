@@ -32,7 +32,6 @@ import threading
 import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import messagebox, ttk
-
 import chess
 
 try:
@@ -110,7 +109,7 @@ def _pick_piece_font(root) -> str:
 # ---------------------------------------------------------------------------
 
 class BoardViewer:
-    def __init__(self, manager=None, root=None, flipped=False, think_time=1.0):
+    def __init__(self, manager=None, root=None, flipped=False, think_time=1.0, logger=None):
         """
         :param manager: BoardManager a exibir (cria um novo se None).
         :param root: janela Tk existente (cria uma nova se None).
@@ -132,6 +131,15 @@ class BoardViewer:
         self.time_manager = None
         self.search_board = None
         self.events = queue.Queue()
+
+        # --- NOVO: Integração do ChessLogger ---
+        self.logger = logger
+        self._last_depth = 0
+        self._last_nodes = 0
+        self._last_eval = ""
+        self._last_pv = ""
+        self._last_time = 0.0
+        # ---------------------------------------
 
         self.root.title("Visualizador de Xadrez")
         self.root.resizable(False, False)
@@ -604,13 +612,37 @@ class BoardViewer:
             tmp.push(move)
         line = " ".join(parts).translate(BoardManager.TABELA_TRADUCAO)
         self.engine_var.set(f"Prof. {depth} | {shown} | {nodes} nós | {line}")
+        
+        self._last_depth = depth
+        self._last_nodes = nodes
+        self._last_eval = shown
+        self._last_pv = line
+        self._last_time = elapsed
 
     def _finish_engine(self, result) -> None:
         self.thinking = False
         move = result.best_move
+
         if move is not None:
+
+            board = self.manager.board
+            turn_str = "Brancas" if board.turn == chess.WHITE else "Pretas"
+            
+            self.logger.log_search(
+                move_number=board.fullmove_number,
+                color=turn_str,
+                uci_move=move.uci(),
+                depth=self._last_depth,
+                nodes=self._last_nodes,
+                evaluation=self._last_eval,
+                pv=self._last_pv,
+                time_spent=self._last_time
+            )
+            
             self.manager.make_move_uci(move.uci())
         self._after_move()
+        
+        
 
 
 # ---------------------------------------------------------------------------
