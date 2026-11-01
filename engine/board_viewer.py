@@ -35,20 +35,20 @@ from tkinter import messagebox, ttk
 import chess
 
 try:
-    from board_manager import BoardManager
+    from engine.board_manager import BoardManager
 except ImportError as exc:  # pragma: no cover
     raise ImportError("board_viewer.py precisa do board_manager.py na mesma pasta.") from exc
 
 # A engine é opcional: sem ela o visualizador funciona só como tabuleiro.
 try:
-    from search import MATE_BOUND, Searcher, format_score
-    from time_manager import TimeManager
+    from engine.search import MATE_BOUND, Searcher, format_score
+    from engine.time_manager import TimeManager
     ENGINE_OK = True
 except Exception:  # noqa: BLE001
     ENGINE_OK = False
 
 try:
-    from evaluation import evaluate_static
+    from engine.evaluation import evaluate_static
     EVAL_OK = True
 except Exception:  # noqa: BLE001
     EVAL_OK = False
