@@ -70,7 +70,7 @@ class BoardManager:
     def get_game_end_state(self):
         #Verifica os estados de fim de jogo: Xeque-mate, Empates variados, etc.
 
-        if not self.board.is_game_over():
+        if not self.board.is_game_over(claim_draw=True):
             return None
         if self.board.is_checkmate():
             return "Xeque-mate"
@@ -87,7 +87,7 @@ class BoardManager:
 
     def is_game_over(self):
         #Retorna booleano indicando se o jogo acabou
-        return self.board.is_game_over()
+        return self.board.is_game_over(claim_draw=True)
 
     def get_fen(self):
         #Retorna o estado atual do tabuleiro em notação FEN

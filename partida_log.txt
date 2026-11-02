@@ -1,0 +1,5 @@
+--- Nova Partida: 2026-11-01 09:31:12 ---
+Lance: 1 | Cor: Pretas | Lance (UCI): b8c6 | Prof: 5 | Nós: 13993 | Eval: +0.09 | PV: Cc6 Cc3 Cf6 Cf3 d5 | Tempo: 0.98s
+Lance: 2 | Cor: Pretas | Lance (UCI): g8f6 | Prof: 5 | Nós: 10664 | Eval: -0.47 | PV: Cf6 Cc3 e5 Cf3 Bc5 | Tempo: 0.70s
+Lance: 3 | Cor: Pretas | Lance (UCI): e7e5 | Prof: 4 | Nós: 6217 | Eval: -0.36 | PV: e5 Cc3 Bc5 Cf3 | Tempo: 0.50s
+Lance: 4 | Cor: Pretas | Lance (UCI): e5f4 | Prof: 4 | Nós: 7565 | Eval: -3.40 | PV: exf4 Cc3 Bb4 Ce2 | Tempo: 0.54s
