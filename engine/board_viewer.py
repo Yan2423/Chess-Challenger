@@ -1,31 +1,3 @@
-"""
-board_viewer.py — Visualizador gráfico do tabuleiro (Tkinter, só biblioteca padrão).
-
-Mostra o tabuleiro com as peças, a lista com a casa atual de CADA peça
-(nomes em português, vindos do BoardManager), o histórico de lances e,
-opcionalmente, joga contra a engine (search.py).
-
-Uso rápido
-----------
-    python board_viewer.py                 # abre a janela com uma partida nova
-
-    # ou, dentro do seu código:
-    from board_manager import BoardManager
-    from board_viewer import BoardViewer
-
-    manager = BoardManager()
-    viewer = BoardViewer(manager)
-    viewer.run()                           # abre a janela (bloqueia até fechar)
-
-    # Se você mesmo controla o laço de jogo, atualize a tela após cada lance:
-    manager.make_move_uci("e2e4")
-    viewer.refresh(process_events=True)
-
-Requisitos: board_manager.py na mesma pasta (ou no PYTHONPATH). Para jogar
-contra a engine: search.py, time_manager.py e evaluation.py também.
-No Linux, o Tkinter pode exigir o pacote do sistema `python3-tk`.
-"""
-
 import queue
 import sys
 import threading
@@ -44,7 +16,8 @@ try:
     from engine.search import MATE_BOUND, Searcher, format_score
     from engine.time_manager import TimeManager
     ENGINE_OK = True
-except Exception:  # noqa: BLE001
+except ImportError as _exc:  # só ImportError: erros de sintaxe/lógica em search.py devem aparecer
+    print(f"[board_viewer] Engine indisponível: {_exc}", file=sys.stderr)
     ENGINE_OK = False
 
 try:
@@ -132,14 +105,7 @@ class BoardViewer:
         self.search_board = None
         self.events = queue.Queue()
 
-        # --- NOVO: Integração do ChessLogger ---
-        self.logger = logger
-        self._last_depth = 0
-        self._last_nodes = 0
-        self._last_eval = ""
-        self._last_pv = ""
-        self._last_time = 0.0
-        # ---------------------------------------
+        self.logger = logger          # ChessLogger opcional
 
         self.root.title("Visualizador de Xadrez")
         self.root.resizable(False, False)
@@ -243,9 +209,18 @@ class BoardViewer:
         ttk.Entry(fen_row, textvariable=self.fen_var, width=34).pack(side="left", padx=4, fill="x", expand=True)
         ttk.Button(fen_row, text="Carregar", command=self.load_fen).pack(side="left")
 
-        self.root.bind("<Left>", lambda _e: self.undo())
-        self.root.bind("<f>", lambda _e: self.flip())
+        self.root.bind("<Left>", self._key_handler(self.undo))
+        self.root.bind("<f>", self._key_handler(self.flip))
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    @staticmethod
+    def _key_handler(action):
+        """Atalho de teclado que é ignorado quando o foco está num campo de texto."""
+        def handler(event):
+            if isinstance(event.widget, (ttk.Entry, tk.Text)):
+                return
+            action()
+        return handler
 
     # ------------------------------------------------------------------
     # Geometria
@@ -347,7 +322,7 @@ class BoardViewer:
         board = self.manager.board
         end = self.manager.get_game_end_state()
         if end:
-            text = f"Fim de jogo: {end} ({board.result()})"
+            text = f"Fim de jogo: {end} ({board.result(claim_draw=True)})"
         else:
             side = "Brancas" if board.turn == chess.WHITE else "Pretas"
             text = f"Vez das {side} — lance {board.fullmove_number}"
@@ -358,7 +333,7 @@ class BoardViewer:
         self.status_var.set(text)
 
         if EVAL_OK:
-            self.eval_var.set(f"Avaliação estática: {evaluate_static(board) / 100:+.2f} (+ = Brancas)")
+            self.eval_var.set(f"Avaliação estática da posição atual (sem busca): {evaluate_static(board) / 100:+.2f} (+ = Brancas)")
         else:
             self.eval_var.set("")
 
@@ -439,7 +414,16 @@ class BoardViewer:
             if promotion is None:
                 return
         move = chess.Move(from_sq, to_sq, promotion=promotion)
+        # Captura o contexto ANTES de executar o lance (número, cor e ply).
+        ply, number, turn = len(board.move_stack), board.fullmove_number, board.turn
         if self.manager.make_move_uci(move.uci()):
+            if self.logger is not None:
+                self.logger.log_opponent_move(
+                    move_number=number,
+                    color="Brancas" if turn == chess.WHITE else "Pretas",
+                    uci_move=move.uci(),
+                    ply=ply,
+                )
             self.selected, self.targets = None, {}
             self._after_move()
 
@@ -482,6 +466,9 @@ class BoardViewer:
         if not both_engines and self._engine_controls(self.manager.board.turn):
             self.manager.undo_move()
         self.selected, self.targets, self.focus_square = None, {}, None
+        self.engine_var.set("")                       # info da busca já não vale para esta posição
+        if self.logger is not None:                   # remove do log os lances desfeitos
+            self.logger.truncate_to(len(self.manager.board.move_stack))
         self.refresh()
 
     def new_game(self) -> None:
@@ -491,6 +478,8 @@ class BoardViewer:
             self.searcher.new_game()
         self.selected, self.targets, self.focus_square = None, {}, None
         self.engine_var.set("")
+        if self.logger is not None:
+            self.logger.new_game()
         self.refresh()
         self.root.after(50, self._maybe_engine_move)
 
@@ -510,6 +499,9 @@ class BoardViewer:
         if self.searcher:
             self.searcher.new_game()
         self.selected, self.targets, self.focus_square = None, {}, None
+        self.engine_var.set("")
+        if self.logger is not None:
+            self.logger.new_game(fen)
         self.refresh()
         self.root.after(50, self._maybe_engine_move)
 
@@ -555,7 +547,7 @@ class BoardViewer:
         def worker():
             try:
                 result = searcher.search(board, tm, info_callback=on_info)
-                self.events.put(("done", search_id, result))
+                self.events.put(("done", search_id, result, tm.elapsed()))
             except Exception as exc:  # noqa: BLE001
                 self.events.put(("error", search_id, exc))
 
@@ -583,7 +575,7 @@ class BoardViewer:
                 if event[0] == "info":
                     self._show_engine_info(*event[2:])
                 elif event[0] == "done":
-                    self._finish_engine(event[2])
+                    self._finish_engine(event[2], event[3])
                     return
                 elif event[0] == "error":
                     self.thinking = False
@@ -595,54 +587,67 @@ class BoardViewer:
         if self.thinking:
             self.root.after(50, self._poll_engine)
 
-    def _show_engine_info(self, depth, score, nodes, elapsed, pv) -> None:
-        turn = self.search_board.turn
+    def _format_eval(self, score: int, turn: bool) -> str:
+        """Score da busca (ponto de vista de quem joga em `turn`) -> texto do ponto de vista das Brancas."""
         text = format_score(score)
         if text.startswith("mate"):
             n = int(text.split()[1])
-            shown = f"#{-n if turn == chess.BLACK else n}"
-        else:
-            white_pov = -score if turn == chess.BLACK else score
-            shown = f"{white_pov / 100:+.2f}"
-        tmp, parts = self.search_board.copy(stack=False), []
-        for move in pv[:6]:
+            return f"#{-n if turn == chess.BLACK else n}"
+        white_pov = -score if turn == chess.BLACK else score
+        return f"{white_pov / 100:+.2f}"
+
+    @staticmethod
+    def _pv_text(board, pv, limit: int = 6) -> str:
+        """PV em notação algébrica (letras em português), a partir de `board`."""
+        tmp, parts = board.copy(stack=False), []
+        for move in pv[:limit]:
             if move not in tmp.legal_moves:
                 break
             parts.append(tmp.san(move))
             tmp.push(move)
-        line = " ".join(parts).translate(BoardManager.TABELA_TRADUCAO)
-        self.engine_var.set(f"Prof. {depth} | {shown} | {nodes} nós | {line}")
-        
-        self._last_depth = depth
-        self._last_nodes = nodes
-        self._last_eval = shown
-        self._last_pv = line
-        self._last_time = elapsed
+        return " ".join(parts).translate(BoardManager.TABELA_TRADUCAO)
 
-    def _finish_engine(self, result) -> None:
+    def _show_engine_info(self, depth, score, nodes, elapsed, pv) -> None:
+        shown = self._format_eval(score, self.search_board.turn)
+        line = self._pv_text(self.search_board, pv)
+        self.engine_var.set(f"Pensando... Prof. {depth} | {shown} | {nodes} nós | {line}")
+
+    def _finish_engine(self, result, elapsed: float) -> None:
+        """
+        `result` é o SearchResult final; `elapsed` é o tempo REAL de parede da busca
+        (result.elapsed só cobre até a última profundidade completa).
+        O log usa só esses valores: nada de estado velho de buscas anteriores.
+        """
         self.thinking = False
         move = result.best_move
 
         if move is not None:
+            board = self.manager.board              # ainda SEM o lance da engine
+            turn = board.turn
+            if result.depth > 0:
+                shown = self._format_eval(result.score, turn)
+                line = self._pv_text(board, result.pv)
+            else:                                   # nem a profundidade 1 terminou
+                shown, line = "n/d", ""
 
-            board = self.manager.board
-            turn_str = "Brancas" if board.turn == chess.WHITE else "Pretas"
-            
-            self.logger.log_search(
-                move_number=board.fullmove_number,
-                color=turn_str,
-                uci_move=move.uci(),
-                depth=self._last_depth,
-                nodes=self._last_nodes,
-                evaluation=self._last_eval,
-                pv=self._last_pv,
-                time_spent=self._last_time
-            )
-            
+            if self.logger is not None:
+                self.logger.log_search(
+                    move_number=board.fullmove_number,
+                    color="Brancas" if turn == chess.WHITE else "Pretas",
+                    uci_move=move.uci(),
+                    depth=result.depth,
+                    nodes=result.nodes,
+                    evaluation=shown,
+                    pv=line,
+                    time_spent=elapsed,
+                    ply=len(board.move_stack),
+                )
+
+            self.engine_var.set(
+                f"Última busca ({move.uci()}): Prof. {result.depth} | {shown} "
+                f"(posição ANTES do lance) | {result.nodes} nós | {elapsed:.2f}s | {line}")
             self.manager.make_move_uci(move.uci())
         self._after_move()
-        
-        
 
 
 # ---------------------------------------------------------------------------
