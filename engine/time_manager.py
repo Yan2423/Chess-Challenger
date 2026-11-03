@@ -1,25 +1,3 @@
-"""
-engine/time_manager.py — Gestão do relógio e do tempo por lance.
-
-Ideia central
--------------
-Cada lance recebe um *orçamento* com dois limites (em segundos):
-
-* soft: tempo "desejado". Antes de iniciar uma nova iteração do
-  aprofundamento iterativo, a busca pergunta `should_start_new_iteration()`;
-  se o tempo gasto já passou de uma fração do soft, ela para e joga o melhor
-  lance da última profundidade completa.
-* hard: limite absoluto. A busca consulta `time_up()` periodicamente e, se
-  estourou, aborta imediatamente (levantando `SearchTimeout`).
-
-Também suporta: tempo fixo por lance (movetime), busca infinita e
-interrupção externa via `stop()` (ex.: comando "stop" do protocolo UCI,
-chamado a partir de outra thread).
-
-Todas as unidades de tempo públicas são SEGUNDOS (float), exceto
-`start_from_uci`, que recebe milissegundos como no protocolo UCI.
-"""
-
 from __future__ import annotations
 
 import math

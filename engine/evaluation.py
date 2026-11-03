@@ -428,19 +428,6 @@ def clear_eval_caches() -> None:
     _PAWN_CACHE.clear()
 
 def evaluate_static(board_input) -> int:
-    """
-    Avaliação estática PURA (sem checar fim de jogo), em centipões,
-    do ponto de vista das BRANCAS (positivo = vantagem das Brancas).
-
-    Foi separada de `evaluate` para a busca (search.py) poder chamá-la
-    nos nós folha sem pagar o custo de is_checkmate/is_stalemate/
-    can_claim_draw a cada avaliação — a busca já trata o fim de jogo
-    por conta própria.
-
-    Versão otimizada: bitboards em vez de varrer as 64 casas, tabelas
-    pré-calculadas, cache da estrutura de peões e cache da avaliação final.
-    O resultado é idêntico ao da versão anterior.
-    """
     board = _extract_board(board_input)
 
     occ_w = board.occupied_co[_WHITE]

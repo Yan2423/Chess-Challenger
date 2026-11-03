@@ -1,30 +1,3 @@
-"""
-engine/search.py — Busca de lances: Negamax + Alpha-Beta, aprofundamento
-iterativo, ordenação de lances e busca de quiescência.
-
-Visão geral
------------
-* `Searcher.search()` roda o aprofundamento iterativo (profundidade 1, 2, 3...).
-  A cada profundidade completa guardamos o melhor lance; se o tempo acabar no
-  meio de uma iteração, ela é descartada e jogamos o resultado da anterior.
-* `_negamax` é um Negamax com poda alfa-beta, estendido com:
-    - tabela de transposição (TT) com limites EXACT/LOWER/UPPER;
-    - extensão de xeque;
-    - null-move pruning;
-    - PVS (janela nula nos lances não-primeiros) + LMR (redução de lances tardios);
-    - detecção de empate (repetição, 50 lances, material insuficiente).
-* Ordenação: lance da TT > capturas (MVV-LVA) > promoções > killers > história.
-* `_quiescence` resolve capturas pendentes (e evasões de xeque) antes de
-  chamar a avaliação estática, mitigando o efeito horizonte.
-
-Scores: centipeões do ponto de vista de quem joga. Mate em N plies vale
-`MATE_SCORE - N` (mates mais rápidos pontuam mais).
-
-Integração com o projeto: `search()` recebe um `BoardManager` ou um
-`chess.Board`. A avaliação vem de `evaluation.evaluate_static` (convenção
-"positivo = Brancas"), convertida aqui para "quem joga".
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -47,14 +20,6 @@ MATE_SCORE = 100_000
 
 
 def evaluate(board: chess.Board) -> int:
-    """
-    Avaliação para o Negamax: do ponto de vista de QUEM JOGA.
-
-    O evaluation.py do projeto devolve o score do ponto de vista das Brancas;
-    aqui apenas invertemos o sinal quando a vez é das Pretas. Usamos
-    `evaluate_static` (sem checagem de fim de jogo), pois a busca já detecta
-    mate, afogamento e empates por conta própria.
-    """
     score = evaluate_static(board)
     return score if board.turn == chess.WHITE else -score
 
