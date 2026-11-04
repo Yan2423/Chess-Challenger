@@ -1,0 +1,27 @@
+# Cache e arquivos compilados do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs gerados pelo seu programa (ChessLogger)
+*.log
+partida_log*.txt
+
+# Ambientes virtuais (caso você use)
+venv/
+env/
+.venv/
+
+# Configurações de IDEs (VS Code, PyCharm, etc.)
+.vscode/
+.idea/
+*.swp
+
+# Arquivos temporários do Sistema Operacional
+.DS_Store
+Thumbs.db
+
+# Pastas de build (caso no futuro você transforme o projeto em um executável)
+build/
+dist/
+*.egg-info/
