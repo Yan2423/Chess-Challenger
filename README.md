@@ -44,7 +44,6 @@ Chess-Challenger/
 ├── README.md
 ├── partida_log.txt        # Gerado automaticamente a cada execução
 └── engine/
-    ├── __init__.py
     ├── board_manager.py   # Encapsula o chess.Board (lances UCI, FEN, fim de jogo)
     ├── board_viewer.py    # Interface gráfica (Tkinter)
     ├── search.py          # Busca: Negamax + alfa-beta e heurísticas
@@ -200,20 +199,7 @@ Campos: número do lance, cor, lance em UCI, profundidade atingida, nós visitad
 
 > O arquivo é sobrescrito a cada nova execução. Copie-o antes de iniciar outra partida se quiser preservá-lo.
 
-## Limitações conhecidas e próximos passos
 
-- Não há livro de aberturas nem tablebases de finais.
-- A tabela de transposição é limpa por completo ao atingir o limite de entradas (1 milhão), sem política de substituição mais refinada.
-- A engine ainda não implementa o protocolo UCI completo, mas o `TimeManager` e a estrutura da busca já foram preparados para isso.
-- Não há suíte de testes automatizados.
-
-Ideias para evoluir o projeto:
-
-- [ ] Protocolo UCI para uso em GUIs como Arena e Cutechess
-- [ ] Livro de aberturas (o `python-chess` já oferece suporte a Polyglot)
-- [ ] Testes automatizados (perft, posições táticas, regressão de avaliação)
-- [ ] Poda por futilidade e *aspiration windows*
-- [ ] Seleção de nível de dificuldade na interface
 
 ## Tecnologias
 
