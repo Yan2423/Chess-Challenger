@@ -72,7 +72,7 @@ Chess-Challenger/
 
 ```bash
 # 1. Clone o repositório
-git clone <url-do-repositorio>
+git clone https://github.com/Yan2423/Chess-Challenger.git
 cd Chess-Challenger
 
 # 2. (Opcional) Crie um ambiente virtual
